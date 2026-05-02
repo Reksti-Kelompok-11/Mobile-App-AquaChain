@@ -1,35 +1,99 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const tabActive = '#0B5A75';
+  const tabInactive = '#8B8B8B';
+  const tabBackground = '#FFFFFF';
+
+  function TabBarIcon({
+    focused,
+    icon,
+  }: {
+    focused: boolean;
+    icon: React.ComponentProps<typeof MaterialIcons>['name'];
+  }) {
+    return (
+      <View style={[styles.iconWrap, focused && { backgroundColor: tabActive }]}>
+        <MaterialIcons
+          name={icon}
+          size={focused ? 28 : 30}
+          color={focused ? '#FFFFFF' : tabInactive}
+        />
+      </View>
+    );
+  }
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
+        tabBarActiveTintColor: tabActive,
+        tabBarInactiveTintColor: tabInactive,
         tabBarButton: HapticTab,
+        tabBarItemStyle: styles.item,
+        tabBarLabelStyle: styles.label,
+        tabBarStyle: [styles.tabBar, { backgroundColor: tabBackground }],
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} icon="home" />,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="monitor"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Monitor',
+          tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} icon="desktop-windows" />,
+        }}
+      />
+      <Tabs.Screen
+        name="jadwal"
+        options={{
+          title: 'Jadwal',
+          tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} icon="access-time" />,
+        }}
+      />
+      <Tabs.Screen
+        name="notifikasi"
+        options={{
+          title: 'Notifikasi',
+          tabBarIcon: ({ focused }) => <TabBarIcon focused={focused} icon="notifications" />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    height: 92,
+    borderTopWidth: 0,
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingHorizontal: 10,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  item: {
+    justifyContent: 'center',
+  },
+  label: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  iconWrap: {
+    width: 37,
+    height: 37,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
