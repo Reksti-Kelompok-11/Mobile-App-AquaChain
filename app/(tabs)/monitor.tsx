@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -8,6 +9,8 @@ import { MonitorMetricCards } from '@/components/ui/monitor/metric-cards';
 import { PageHeader } from '@/components/ui/page-header';
 
 export default function MonitorScreen() {
+  const [selectedKolamId, setSelectedKolamId] = useState('1');
+
   return (
     <ThemedView style={styles.screen}>
       <PageHeader 
@@ -25,8 +28,11 @@ export default function MonitorScreen() {
           </View>
         </View>
       </PageHeader>
-      <KolamSelector />
-      <MonitorMetricCards />
+      <KolamSelector
+        selectedId={selectedKolamId}
+        onSelect={setSelectedKolamId}
+      />
+      <MonitorMetricCards selectedKolamId={selectedKolamId} />
     </ThemedView>
   );
 }

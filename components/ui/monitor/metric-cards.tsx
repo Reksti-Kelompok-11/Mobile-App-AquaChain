@@ -141,8 +141,26 @@ function MetricCard({ metric }: { metric: Metric }) {
   );
 }
 
-export function MonitorMetricCards({ items }: { items?: Metric[] }) {
+export function MonitorMetricCards({
+  items,
+  selectedKolamId,
+}: {
+  items?: Metric[];
+  selectedKolamId?: string;
+}) {
   const data = items ?? placeholderMetrics;
+
+  if (selectedKolamId && selectedKolamId !== "1") {
+    return (
+      <View style={styles.metricsWrap}>
+        <View style={styles.emptyCard}>
+          <ThemedText style={styles.emptyText}>
+            Tidak ada data untuk kolam ini.
+          </ThemedText>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.metricsWrap}>
@@ -158,6 +176,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 24,
     gap: 12,
+  },
+  emptyCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 13,
+    color: "#8A8F98",
+    fontWeight: "600",
   },
   metricCard: {
     backgroundColor: "#FFFFFF",

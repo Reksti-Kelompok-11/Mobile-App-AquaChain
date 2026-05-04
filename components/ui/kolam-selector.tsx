@@ -68,8 +68,24 @@ export function KolamCard({
   );
 }
 
-export function KolamSelector() {
-  const [selectedKolamId, setSelectedKolamId] = useState(kolamData[0].id);
+export function KolamSelector({
+  items = kolamData,
+  selectedId,
+  onSelect,
+}: {
+  items?: Kolam[];
+  selectedId?: string;
+  onSelect?: (id: string) => void;
+}) {
+  const [internalSelectedId, setInternalSelectedId] = useState(
+    items[0]?.id ?? "",
+  );
+  const activeId = selectedId ?? internalSelectedId;
+
+  const handleSelect = (id: string) => {
+    setInternalSelectedId(id);
+    onSelect?.(id);
+  };
 
   return (
     <ScrollView
@@ -77,12 +93,12 @@ export function KolamSelector() {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}
     >
-      {kolamData.map((kolam) => (
+      {items.map((kolam) => (
         <KolamCard
           key={kolam.id}
           kolam={kolam}
-          isSelected={selectedKolamId === kolam.id}
-          onPress={() => setSelectedKolamId(kolam.id)}
+          isSelected={activeId === kolam.id}
+          onPress={() => handleSelect(kolam.id)}
         />
       ))}
     </ScrollView>
