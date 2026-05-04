@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { KolamSelector } from '@/components/ui/kolam-selector';
 import { PageHeader } from '@/components/ui/page-header';
 
 export default function MonitorScreen() {
@@ -23,6 +24,7 @@ export default function MonitorScreen() {
           </View>
         </View>
       </PageHeader>
+      <KolamSelector />
     </ThemedView>
   );
 }

@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { KolamSelector } from '@/components/ui/kolam-selector';
 import { PageHeader } from '@/components/ui/page-header';
 
 export default function HomeScreen() {
@@ -34,6 +35,7 @@ export default function HomeScreen() {
           <ThemedText style={styles.alertText}>2 Kolam Perlu Diperhatikan</ThemedText>
         </View>
       </PageHeader>
+      <KolamSelector />
     </ThemedView>
   );
 }
