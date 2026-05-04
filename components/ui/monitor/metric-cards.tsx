@@ -241,11 +241,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     alignSelf: "flex-start",
+    marginTop: 12,
+    marginLeft: 8,
   },
   metricValue: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "800",
-    lineHeight: 32, // tambahin ini
+    lineHeight: 36,
     color: "#11181C",
   },
   metricUnit: {
@@ -257,7 +259,7 @@ const styles = StyleSheet.create({
   metricChartWrap: {
     flex: 1,
     height: 60,
-    marginLeft: 16,
+    marginLeft: 8,
     marginRight: -24,
     justifyContent: "flex-end",
     alignItems: "flex-end",

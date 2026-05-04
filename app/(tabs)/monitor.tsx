@@ -1,10 +1,11 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { KolamSelector } from '@/components/ui/kolam-selector';
+import { FilterStatusCard } from '@/components/ui/monitor/filter-status-card';
 import { MonitorMetricCards } from '@/components/ui/monitor/metric-cards';
 import { PageHeader } from '@/components/ui/page-header';
 
@@ -13,26 +14,32 @@ export default function MonitorScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <PageHeader 
-        title="Monitor Air" 
-        subtitle="Pemantauan Kualitas Air Real Time"
-        onPressRightIcon={() => alert('Menyegarkan notifikasi...')}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.statusCard}>
-          <View style={styles.statusIcon}>
-            <MaterialIcons name="check" size={20} color="#FFFFFF" />
+        <PageHeader 
+          title="Monitor Air" 
+          subtitle="Pemantauan Kualitas Air Real Time"
+          onPressRightIcon={() => alert('Menyegarkan notifikasi...')}
+        >
+          <View style={styles.statusCard}>
+            <View style={styles.statusIcon}>
+              <MaterialIcons name="check" size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.statusTextWrap}>
+              <ThemedText style={styles.statusTitle}>Kondisi Aman</ThemedText>
+              <ThemedText style={styles.statusSubtitle}>Kolam A1 - Diperbarui 3 menit lalu</ThemedText>
+            </View>
           </View>
-          <View style={styles.statusTextWrap}>
-            <ThemedText style={styles.statusTitle}>Kondisi Aman</ThemedText>
-            <ThemedText style={styles.statusSubtitle}>Kolam A1 - Diperbarui 3 menit lalu</ThemedText>
-          </View>
-        </View>
-      </PageHeader>
-      <KolamSelector
-        selectedId={selectedKolamId}
-        onSelect={setSelectedKolamId}
-      />
-      <MonitorMetricCards selectedKolamId={selectedKolamId} />
+        </PageHeader>
+        <KolamSelector
+          selectedId={selectedKolamId}
+          onSelect={setSelectedKolamId}
+        />
+        <MonitorMetricCards selectedKolamId={selectedKolamId} />
+        <FilterStatusCard hasData={selectedKolamId === '1'} />
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -41,6 +48,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#F2F2F2',
+  },
+  content: {
+    paddingBottom: 24,
   },
   statusCard: {
     backgroundColor: '#BFFFA4',
