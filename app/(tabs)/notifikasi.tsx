@@ -6,6 +6,71 @@ import { NotificationCard } from '@/components/ui/notifikasi/notification-card';
 import { PageHeader } from '@/components/ui/page-header';
 
 export default function NotifikasiScreen() {
+  const notifications: Array<{
+    title: string;
+    description: string;
+    status: 'bahaya' | 'waspada' | 'info' | 'selesai';
+    sourceLabel?: string;
+    timeLabel?: string;
+    actionLabel?: string;
+    iconName?: 'device-thermostat' | 'restaurant' | 'warning' | 'info' | 'check-circle';
+    onPressAction?: () => void;
+  }> = [
+    {
+      title: 'Suhu Air Tinggi',
+      description:
+        'Suhu Kolam A2 mencapai 30.2C. Pertimbangkan untuk menambah aerasi.',
+      status: 'waspada',
+      sourceLabel: 'Kolam A2',
+      timeLabel: '12 menit lalu',
+      actionLabel: 'Tindakan',
+      iconName: 'device-thermostat',
+      onPressAction: () => alert('Tindakan: suhu air'),
+    },
+    {
+      title: 'Pakan Otomatis Diberikan',
+      description:
+        'Sesi pakan pagi (06:00) selesai. Total 8.5 kg untuk 3 kolam.',
+      status: 'info',
+      sourceLabel: 'Semua Kolam',
+      timeLabel: '2 jam lalu',
+      iconName: 'restaurant',
+    },
+    {
+      title: 'Amonia Tinggi — Terdeteksi',
+      description:
+        'Kadar amonia Kolam A2 mencapai 1.2 mg/L. Sistem menghentikan pakan otomatis!',
+      status: 'bahaya',
+      sourceLabel: 'Kolam A2',
+      timeLabel: 'Kemarin 18:30',
+      actionLabel: 'Tindakan',
+      iconName: 'warning',
+      onPressAction: () => alert('Tindakan: amonia'),
+    },
+    {
+      title: 'Data Tersinkron ke Blockchain',
+      description:
+        'Log operasional harian berhasil di-anchor ke blockchain. Data tidak dapat diubah.',
+      status: 'info',
+      sourceLabel: 'Sistem',
+      timeLabel: 'Kemarin 00:00',
+      iconName: 'info',
+    },
+    {
+      title: 'Filter Kolam Diganti',
+      description: 'Penggantian filter Kolam B1 selesai. Sistem kembali normal.',
+      status: 'selesai',
+      sourceLabel: 'Kolam B1',
+      timeLabel: '2 hari lalu',
+      iconName: 'check-circle',
+    },
+  ];
+
+  const bahayaCount = notifications.filter(
+    (item) => item.status === 'bahaya'
+  ).length;
+  const hasBahaya = bahayaCount > 0;
+
   return (
     <ThemedView style={styles.screen}>
       <PageHeader
@@ -15,10 +80,12 @@ export default function NotifikasiScreen() {
         onPressRightAction={() => alert('Semua notifikasi ditandai sudah dibaca.')}
         onPressRightIcon={() => alert('Menyegarkan notifikasi...')}
       >
-        <View style={styles.warningPill}>
-          <View style={styles.warningDot} />
-          <ThemedText style={styles.warningText}>
-            [x] pesan bahaya terdeteksi.
+        <View style={[styles.warningPill, !hasBahaya && styles.safePill]}>
+          <View style={[styles.warningDot, !hasBahaya && styles.safeDot]} />
+          <ThemedText style={[styles.warningText, !hasBahaya && styles.safeText]}>
+            {hasBahaya
+              ? `${bahayaCount} pesan bahaya terdeteksi.`
+              : 'Tidak ada pesan bahaya.'}
           </ThemedText>
         </View>
       </PageHeader>
@@ -26,50 +93,19 @@ export default function NotifikasiScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <NotificationCard
-          title="Suhu Air Tinggi"
-          description="Suhu Kolam A2 mencapai 30.2C. Pertimbangkan untuk menambah aerasi."
-          status="waspada"
-          sourceLabel="Kolam A2"
-          timeLabel="12 menit lalu"
-          actionLabel="Tindakan"
-          iconName="device-thermostat"
-          onPressAction={() => alert('Tindakan: suhu air')}
-        />
-        <NotificationCard
-          title="Pakan Otomatis Diberikan"
-          description="Sesi pakan pagi (06:00) selesai. Total 8.5 kg untuk 3 kolam."
-          status="info"
-          sourceLabel="Semua Kolam"
-          timeLabel="2 jam lalu"
-          iconName="restaurant"
-        />
-        <NotificationCard
-          title="Amonia Tinggi — Terdeteksi"
-          description="Kadar amonia Kolam A2 mencapai 1.2 mg/L. Sistem menghentikan pakan otomatis!"
-          status="bahaya"
-          sourceLabel="Kolam A2"
-          timeLabel="Kemarin 18:30"
-          actionLabel="Tindakan"
-          iconName="warning"
-          onPressAction={() => alert('Tindakan: amonia')}
-        />
-        <NotificationCard
-          title="Data Tersinkron ke Blockchain"
-          description="Log operasional harian berhasil di-anchor ke blockchain. Data tidak dapat diubah."
-          status="info"
-          sourceLabel="Sistem"
-          timeLabel="Kemarin 00:00"
-          iconName="info"
-        />
-        <NotificationCard
-          title="Filter Kolam Diganti"
-          description="Penggantian filter Kolam B1 selesai. Sistem kembali normal."
-          status="selesai"
-          sourceLabel="Kolam B1"
-          timeLabel="2 hari lalu"
-          iconName="check-circle"
-        />
+        {notifications.map((notification, index) => (
+          <NotificationCard
+            key={`${notification.title}-${index}`}
+            title={notification.title}
+            description={notification.description}
+            status={notification.status}
+            sourceLabel={notification.sourceLabel}
+            timeLabel={notification.timeLabel}
+            actionLabel={notification.actionLabel}
+            iconName={notification.iconName}
+            onPressAction={notification.onPressAction}
+          />
+        ))}
         <View style={styles.helperTextWrap}>
           <ThemedText style={styles.helperText}>
             Notifikasi baru akan muncul otomatis dari sistem monitoring.
@@ -121,5 +157,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFACAC',
+  },
+  safePill: {
+    backgroundColor: 'rgba(43, 190, 93, 0.2)',
+  },
+  safeDot: {
+    backgroundColor: '#2BBE5D',
+  },
+  safeText: {
+    color: '#1D7A3B',
   },
 });
