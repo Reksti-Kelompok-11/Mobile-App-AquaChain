@@ -14,7 +14,14 @@ export default function NotifikasiScreen() {
         rightActionLabel="Baca Semua"
         onPressRightAction={() => alert('Semua notifikasi ditandai sudah dibaca.')}
         onPressRightIcon={() => alert('Menyegarkan notifikasi...')}
-      />
+      >
+        <View style={styles.warningPill}>
+          <View style={styles.warningDot} />
+          <ThemedText style={styles.warningText}>
+            [x] pesan bahaya terdeteksi.
+          </ThemedText>
+        </View>
+      </PageHeader>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -90,5 +97,29 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 12,
     color: '#8A8F98',
+  },
+  warningPill: {
+    marginTop: 12,
+    alignSelf: 'stretch',
+    width: '100%',
+    backgroundColor: 'rgba(230, 70, 70, 0.50)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  warningDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E64646',
+  },
+  warningText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFACAC',
   },
 });
