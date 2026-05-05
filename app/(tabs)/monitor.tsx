@@ -14,25 +14,25 @@ export default function MonitorScreen() {
 
   return (
     <ThemedView style={styles.screen}>
+      <PageHeader 
+        title="Monitor Air" 
+        subtitle="Pemantauan Kualitas Air Real Time"
+        onPressRightIcon={() => alert('Menyegarkan notifikasi...')}
+      >
+        <View style={styles.statusCard}>
+          <View style={styles.statusIcon}>
+            <MaterialIcons name="check" size={20} color="#FFFFFF" />
+          </View>
+          <View style={styles.statusTextWrap}>
+            <ThemedText style={styles.statusTitle}>Kondisi Aman</ThemedText>
+            <ThemedText style={styles.statusSubtitle}>Kolam A1 - Diperbarui 3 menit lalu</ThemedText>
+          </View>
+        </View>
+      </PageHeader>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <PageHeader 
-          title="Monitor Air" 
-          subtitle="Pemantauan Kualitas Air Real Time"
-          onPressRightIcon={() => alert('Menyegarkan notifikasi...')}
-        >
-          <View style={styles.statusCard}>
-            <View style={styles.statusIcon}>
-              <MaterialIcons name="check" size={20} color="#FFFFFF" />
-            </View>
-            <View style={styles.statusTextWrap}>
-              <ThemedText style={styles.statusTitle}>Kondisi Aman</ThemedText>
-              <ThemedText style={styles.statusSubtitle}>Kolam A1 - Diperbarui 3 menit lalu</ThemedText>
-            </View>
-          </View>
-        </PageHeader>
         <KolamSelector
           selectedId={selectedKolamId}
           onSelect={setSelectedKolamId}

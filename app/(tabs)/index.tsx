@@ -1,9 +1,11 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { AutoFeederCard } from '@/components/ui/home/auto-feeder-card';
+import { KolamOverviewCard } from '@/components/ui/home/kolam-overview-card';
 import { KolamSelector } from '@/components/ui/kolam-selector';
 import { PageHeader } from '@/components/ui/page-header';
 
@@ -35,7 +37,14 @@ export default function HomeScreen() {
           <ThemedText style={styles.alertText}>2 Kolam Perlu Diperhatikan</ThemedText>
         </View>
       </PageHeader>
-      <KolamSelector />
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <KolamSelector />
+        <KolamOverviewCard />
+        <AutoFeederCard />
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -44,6 +53,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#F2F2F2',
+  },
+  content: {
+    paddingBottom: 24,
   },
   alertPill: {
     marginTop: 14,
