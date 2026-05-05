@@ -25,22 +25,22 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.screen}>
+      <PageHeader 
+        title="Selamat Pagi, Wijak" 
+        subtitle={`Waktu Real Time : ${timeLabel} WIB`}
+        onPressRightIcon={() => alert('Menyegarkan notifikasi...')}
+      >
+        <View style={styles.alertPill}>
+          <View style={styles.alertIcon}>
+            <MaterialIcons name="warning" size={18} color="#1F1F1F" />
+          </View>
+          <ThemedText style={styles.alertText}>2 Kolam Perlu Diperhatikan</ThemedText>
+        </View>
+      </PageHeader>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <PageHeader 
-          title="Selamat Pagi, Wijak" 
-          subtitle={`Waktu Real Time : ${timeLabel} WIB`}
-          onPressRightIcon={() => alert('Menyegarkan notifikasi...')}
-        >
-          <View style={styles.alertPill}>
-            <View style={styles.alertIcon}>
-              <MaterialIcons name="warning" size={18} color="#1F1F1F" />
-            </View>
-            <ThemedText style={styles.alertText}>2 Kolam Perlu Diperhatikan</ThemedText>
-          </View>
-        </PageHeader>
         <KolamSelector />
         <KolamOverviewCard />
         <AutoFeederCard />
