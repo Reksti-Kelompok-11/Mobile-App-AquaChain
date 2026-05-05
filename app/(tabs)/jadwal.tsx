@@ -1,12 +1,17 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useState } from 'react';
-import { StyleSheet, Switch, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { AddScheduleCard } from '@/components/ui/jadwal/add-schedule-card';
 import { PageHeader } from '@/components/ui/page-header';
 
 export default function JadwalScreen() {
   const [isFeederOn, setIsFeederOn] = useState(true);
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [kolamValue, setKolamValue] = useState('Kolam A1');
+  const [waktuValue, setWaktuValue] = useState('07:00 AM');
 
   return (
     <ThemedView style={styles.screen}>
@@ -36,6 +41,41 @@ export default function JadwalScreen() {
         </View>
       </PageHeader>
       <View style={styles.content}>
+        <View style={styles.actionRow}>
+          <Pressable
+            onPress={() => setShowAddCard((prev) => !prev)}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <MaterialIcons name="add" size={18} color="#FFFFFF" />
+            <ThemedText style={styles.primaryButtonText}>Tambah Jadwal</ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => alert('Membuka kalkulator pakan.')}
+            style={({ pressed }) => [
+              styles.outlineButton,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <MaterialIcons name="calculate" size={18} color="#2F7BFF" />
+            <ThemedText style={styles.outlineButtonText}>Kalkulator</ThemedText>
+          </Pressable>
+        </View>
+        {showAddCard && (
+          <AddScheduleCard
+            kolamValue={kolamValue}
+            waktuValue={waktuValue}
+            onChangeKolam={setKolamValue}
+            onChangeWaktu={setWaktuValue}
+            onSave={() => {
+              alert('Jadwal disimpan.');
+              setShowAddCard(false);
+            }}
+            onCancel={() => setShowAddCard(false)}
+          />
+        )}
         <ThemedText>Halaman jadwal bisa dipakai untuk atur penyiraman, feeding, atau pengingat.</ThemedText>
       </View>
     </ThemedView>
@@ -50,6 +90,46 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
     gap: 12,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  primaryButton: {
+    flex: 1,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: '#2F7BFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  outlineButton: {
+    flex: 1,
+    height: 46,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#2F7BFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  outlineButtonText: {
+    color: '#2F7BFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  buttonPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
   feederCard: {
     marginTop: 14,
