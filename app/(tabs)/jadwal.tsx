@@ -1,10 +1,11 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AddScheduleCard } from '@/components/ui/jadwal/add-schedule-card';
+import { ScheduleListCard } from '@/components/ui/jadwal/schedule-list-card';
 import { PageHeader } from '@/components/ui/page-header';
 
 export default function JadwalScreen() {
@@ -40,7 +41,10 @@ export default function JadwalScreen() {
           </View>
         </View>
       </PageHeader>
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.actionRow}>
           <Pressable
             onPress={() => setShowAddCard((prev) => !prev)}
@@ -76,8 +80,8 @@ export default function JadwalScreen() {
             onCancel={() => setShowAddCard(false)}
           />
         )}
-        <ThemedText>Halaman jadwal bisa dipakai untuk atur penyiraman, feeding, atau pengingat.</ThemedText>
-      </View>
+        <ScheduleListCard />
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -90,6 +94,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
     gap: 12,
+    paddingBottom: 32,
   },
   actionRow: {
     flexDirection: 'row',
