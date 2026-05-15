@@ -84,10 +84,14 @@ function createLocalId() {
 
 function parseDosage(value: string) {
   const normalized = value.replace(',', '.').trim();
-  if (!normalized) return null;
+  if (!normalized) {
+    return { value: null, isInvalid: false };
+  }
   const parsed = Number.parseFloat(normalized);
-  if (Number.isNaN(parsed) || parsed <= 0) return null;
-  return parsed;
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return { value: null, isInvalid: true };
+  }
+  return { value: parsed, isInvalid: false };
 }
 
 export default function JadwalScreen() {
@@ -200,15 +204,18 @@ export default function JadwalScreen() {
     }));
   }, [pondMap, schedules]);
 
-  const parsedDosage = useMemo(() => parseDosage(dosageValue), [dosageValue]);
+  const { value: parsedDosage, isInvalid: isDosageInvalid } = useMemo(
+    () => parseDosage(dosageValue),
+    [dosageValue],
+  );
 
   const handleSaveSchedule = useCallback(async () => {
     if (!selectedPondId) {
       return;
     }
 
-    if (parsedDosage === null) {
-      alert('Masukkan dosis pakan terlebih dahulu.');
+    if (isDosageInvalid) {
+      alert('Dosis pakan tidak valid.');
       return;
     }
 
@@ -227,7 +234,7 @@ export default function JadwalScreen() {
       console.warn('Failed to save schedule', error);
       alert('Gagal menyimpan jadwal.');
     }
-  }, [loadSchedules, parsedDosage, selectedPondId, waktuValue]);
+  }, [isDosageInvalid, loadSchedules, parsedDosage, selectedPondId, waktuValue]);
 
   const handleToggleSchedule = useCallback(async (item: ScheduleItem) => {
     try {
@@ -389,7 +396,7 @@ export default function JadwalScreen() {
             selectedPondId={selectedPondId}
             waktuValue={waktuValue}
             dosageValue={dosageValue}
-            isSaveDisabled={!selectedPondId || pondOptions.length === 0 || parsedDosage === null}
+            isSaveDisabled={!selectedPondId || pondOptions.length === 0 || isDosageInvalid}
             onSelectPond={setSelectedPondId}
             onChangeWaktu={setWaktuValue}
             onChangeDosage={setDosageValue}

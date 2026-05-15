@@ -60,7 +60,7 @@ export const api = {
 
   // Feeder
   getFeederSchedules: (pondId: string): Promise<FeederSchedule[]> => request(`/api/feeder/${pondId}/schedules`),
-  createFeederSchedule: (data: { scheduleId?: string; pondId: string; time: string; dosage: number }) =>
+  createFeederSchedule: (data: { scheduleId?: string; pondId: string; time: string; dosage: number | null }) =>
     request('/api/feeder/schedules', {
       method: 'POST',
       body: JSON.stringify({
