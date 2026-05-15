@@ -8,33 +8,11 @@ import { AutoFeederCard } from '@/components/ui/home/auto-feeder-card';
 import { KolamOverviewCard } from '@/components/ui/home/kolam-overview-card';
 import { KolamSelector } from '@/components/ui/kolam-selector';
 import { PageHeader } from '@/components/ui/page-header';
-import { supabase } from '@/src/supabase';
+import { api, type FeederSchedule, type Pond, type Telemetry } from '@/src/api';
 
-type PondRow = {
-  pond_id: string;
-  name: string | null;
-  fish_type: string | null;
-  capacity: number | null;
-  status: string | null;
-  created_at: string | null;
-};
-
-type TelemetryRow = {
-  telemetry_id: string;
-  pond_id: string;
-  ph: number | null;
-  temperature: number | null;
-  turbidity: number | null;
-  timestamp: string | null;
-};
-
-type FeedingScheduleRow = {
-  schedule_id: string;
-  pond_id: string;
-  time: string | null;
-  dosage: number | null;
-  is_active: boolean | null;
-};
+type PondRow = Pond;
+type TelemetryRow = Telemetry;
+type FeedingScheduleRow = FeederSchedule;
 
 type FeedingLogRow = {
   log_id: string;
@@ -196,60 +174,44 @@ export default function HomeScreen() {
   }, []);
 
   const loadPonds = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('ponds')
-      .select('pond_id, name, fish_type, capacity, status, created_at')
-      .order('created_at', { ascending: true });
-
-    if (!error && data) {
+    try {
+      const data = await api.getPonds();
       setPonds(data);
+    } catch (error) {
+      console.warn('Failed to load ponds', error);
     }
   }, []);
 
   const loadSchedules = useCallback(async () => {
-    if (!selectedPondId) return;
-    const { data, error } = await supabase
-      .from('feeding_schedules')
-      .select('schedule_id, pond_id, time, dosage, is_active')
-      .eq('pond_id', selectedPondId)
-      .order('time', { ascending: true });
+    if (!selectedPondId) {
+      setSchedules([]);
+      return;
+    }
 
-    if (!error && data) {
+    try {
+      const data = await api.getFeederSchedules(selectedPondId);
       setSchedules(data);
+    } catch (error) {
+      console.warn('Failed to load schedules', error);
     }
   }, [selectedPondId]);
 
   const loadLogs = useCallback(async () => {
-    if (!selectedPondId) return;
-    const { data, error } = await supabase
-      .from('feeding_logs')
-      .select('log_id, pond_id, scheduled_time, actual_time, target_dosage, actual_dosage, status')
-      .eq('pond_id', selectedPondId)
-      .order('actual_time', { ascending: false })
-      .limit(10);
+    if (!selectedPondId) {
+      setFeedingLogs([]);
+      return;
+    }
 
-    if (!error && data) {
-      setFeedingLogs(data);
+    try {
+      const data = await api.getFeederLogs(selectedPondId);
+      setFeedingLogs(data as FeedingLogRow[]);
+    } catch (error) {
+      console.warn('Failed to load feeder logs', error);
     }
   }, [selectedPondId]);
 
   useEffect(() => {
     loadPonds();
-
-    const channel = supabase
-      .channel('ponds-home')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'ponds' },
-        () => {
-          loadPonds();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [loadPonds]);
 
   useEffect(() => {
@@ -274,19 +236,9 @@ export default function HomeScreen() {
       if (!isMounted || inFlight) return;
       inFlight = true;
       try {
-        const { data, error } = await supabase
-          .from('telemetry')
-          .select('telemetry_id, pond_id, ph, temperature, turbidity, timestamp')
-          .eq('pond_id', selectedPondId)
-          .order('timestamp', { ascending: false })
-          .limit(TELEMETRY_LIMIT);
-
+        const data = await api.getTelemetryByPond(selectedPondId);
         if (!isMounted) return;
-        if (!error && data) {
-          setTelemetry(sortTelemetry(data));
-        } else {
-          setTelemetry([]);
-        }
+        setTelemetry(sortTelemetry(data));
       } catch (error) {
         if (isMounted) {
           console.warn('Home telemetry polling failed', error);
@@ -307,47 +259,11 @@ export default function HomeScreen() {
     loadSchedules();
     loadLogs();
 
-    const telemetryChannel = supabase
-      .channel(`telemetry-home:${selectedPondId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'telemetry', filter: `pond_id=eq.${selectedPondId}` },
-        () => {
-          loadTelemetry();
-        },
-      )
-      .subscribe();
-
-    const scheduleChannel = supabase
-      .channel(`schedules-home:${selectedPondId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'feeding_schedules', filter: `pond_id=eq.${selectedPondId}` },
-        () => {
-          loadSchedules();
-        },
-      )
-      .subscribe();
-
-    const logChannel = supabase
-      .channel(`logs-home:${selectedPondId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'feeding_logs', filter: `pond_id=eq.${selectedPondId}` },
-        () => {
-          loadLogs();
-        },
-      )
-      .subscribe();
-
     return () => {
       isMounted = false;
       if (pollTimeout) {
         clearTimeout(pollTimeout);
       }
-      supabase.removeChannel(telemetryChannel);
-      supabase.removeChannel(scheduleChannel);
-      supabase.removeChannel(logChannel);
     };
   }, [loadLogs, loadSchedules, ponds.length, selectedPondId]);
 
@@ -464,11 +380,21 @@ export default function HomeScreen() {
     ? `Pakan terakhir: ${formatTimeValue(latestLogTime.toISOString())}`
     : 'Pakan terakhir: -';
 
-  const handleRefresh = useCallback(() => {
-    loadPonds();
-    loadSchedules();
-    loadLogs();
-  }, [loadLogs, loadPonds, loadSchedules]);
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([loadPonds(), loadSchedules(), loadLogs()]);
+
+    if (!selectedPondId) {
+      setTelemetry([]);
+      return;
+    }
+
+    try {
+      const data = await api.getTelemetryByPond(selectedPondId);
+      setTelemetry(sortTelemetry(data));
+    } catch (error) {
+      console.warn('Failed to refresh telemetry', error);
+    }
+  }, [loadLogs, loadPonds, loadSchedules, selectedPondId]);
 
   return (
     <ThemedView style={styles.screen}>

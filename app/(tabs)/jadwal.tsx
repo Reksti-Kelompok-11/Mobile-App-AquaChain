@@ -92,6 +92,7 @@ function parseDosage(value: string) {
 
 export default function JadwalScreen() {
   const [isFeederOn, setIsFeederOn] = useState(true);
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
   const [ponds, setPonds] = useState<PondRow[]>([]);
   const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
@@ -153,6 +154,15 @@ export default function JadwalScreen() {
       setSelectedPondId(pondOptions[0].id);
     }
   }, [pondOptions, selectedPondId]);
+
+  useEffect(() => {
+    if (schedules.length === 0) {
+      setIsFeederOn(false);
+      return;
+    }
+    const anyActive = schedules.some((schedule) => schedule.is_active !== false);
+    setIsFeederOn(anyActive);
+  }, [schedules]);
 
   const sections = useMemo<ScheduleSection[]>(() => {
     const grouped: Record<SectionId, ScheduleItem[]> = {
@@ -239,6 +249,50 @@ export default function JadwalScreen() {
     }
   }, []);
 
+  const handleToggleAllSchedules = useCallback(
+    async (nextValue: boolean) => {
+      if (isBulkUpdating) return;
+      setIsBulkUpdating(true);
+      setIsFeederOn(nextValue);
+
+      const toUpdate = nextValue
+        ? schedules.filter((schedule) => schedule.is_active === false)
+        : schedules.filter((schedule) => schedule.is_active !== false);
+
+      if (toUpdate.length === 0) {
+        setIsBulkUpdating(false);
+        return;
+      }
+
+      try {
+        if (nextValue) {
+          await Promise.all(
+            toUpdate.map((schedule) => api.activateFeederSchedule(schedule.schedule_id)),
+          );
+        } else {
+          await Promise.all(
+            toUpdate.map((schedule) => api.deactivateFeederSchedule(schedule.schedule_id)),
+          );
+        }
+
+        setSchedules((prev) =>
+          prev.map((schedule) =>
+            toUpdate.some((item) => item.schedule_id === schedule.schedule_id)
+              ? { ...schedule, is_active: nextValue }
+              : schedule,
+          ),
+        );
+      } catch (error) {
+        console.warn('Failed to update all schedules', error);
+        alert('Gagal mengubah status semua jadwal.');
+        setIsFeederOn(!nextValue);
+      } finally {
+        setIsBulkUpdating(false);
+      }
+    },
+    [isBulkUpdating, schedules],
+  );
+
   const deleteSchedule = useCallback(async (item: ScheduleItem) => {
     try {
       await api.deleteFeederSchedule(item.id);
@@ -295,7 +349,8 @@ export default function JadwalScreen() {
           <View style={styles.switchWrap}>
             <Switch
               value={isFeederOn}
-              onValueChange={setIsFeederOn}
+              onValueChange={handleToggleAllSchedules}
+              disabled={isBulkUpdating || schedules.length === 0}
               trackColor={{ false: 'rgba(255, 255, 255, 0.25)', true: '#4BE37A' }}
               thumbColor={isFeederOn ? '#FFFFFF' : '#E6E6E6'}
             />
