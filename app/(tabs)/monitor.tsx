@@ -8,10 +8,17 @@ import { KolamSelector } from '@/components/ui/kolam-selector';
 import { FilterStatusCard } from '@/components/ui/monitor/filter-status-card';
 import { MonitorMetricCards, type Metric } from '@/components/ui/monitor/metric-cards';
 import { PageHeader } from '@/components/ui/page-header';
-import { api, type Pond, type Telemetry } from '@/src/api';
+import { api, type Pond, type Telemetry, type TelemetryFhi } from '@/src/api';
 
 type PondRow = Pond;
 type TelemetryRow = Telemetry;
+type FhiResponse = TelemetryFhi | number | null;
+
+type FilterHealthState = {
+  percent: number;
+  description: string;
+  label?: string | null;
+};
 
 type StatusLevel = 'Baik' | 'Sedang' | 'Bahaya';
 
@@ -87,6 +94,58 @@ function formatNumber(value: number | null | undefined, decimals: number): strin
   return value.toFixed(decimals);
 }
 
+function clampPercent(value: number) {
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+function parseNumber(value: unknown): number | null {
+  if (typeof value === 'number' && !Number.isNaN(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
+
+function normalizeFhi(raw: FhiResponse | undefined): FilterHealthState | null {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === 'number' && !Number.isNaN(raw)) {
+    return {
+      percent: clampPercent(raw),
+      description: 'Indeks kesehatan filter terbaru.',
+    };
+  }
+
+  if (typeof raw !== 'object') return null;
+
+  const record = raw as Record<string, unknown>;
+  const payload =
+    record.data && typeof record.data === 'object'
+      ? (record.data as Record<string, unknown>)
+      : record;
+  const percent =
+    parseNumber(payload.percent) ??
+    parseNumber(payload.fhi) ??
+    parseNumber(payload.value);
+
+  if (percent === null) return null;
+
+  const description =
+    typeof payload.description === 'string' && payload.description.trim().length > 0
+      ? payload.description
+      : 'Indeks kesehatan filter terbaru.';
+  const label =
+    typeof payload.label === 'string' && payload.label.trim().length > 0
+      ? payload.label
+      : null;
+
+  return {
+    percent: clampPercent(percent),
+    description,
+    label,
+  };
+}
+
 function buildSeries<T>(items: T[], accessor: (item: T) => number | null): number[] {
   const values = items
     .map(accessor)
@@ -129,60 +188,11 @@ function metricStatus(value: number | null | undefined, min: number, max: number
   };
 }
 
-function clampNumber(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function describeTrend(value: number) {
-  const absValue = Math.abs(value);
-  if (absValue < 0.1) return 'stabil';
-  const direction = value > 0 ? 'naik' : 'turun';
-  return `${direction} ${absValue.toFixed(1)} NTU`;
-}
-
-function computeFilterHealth(telemetryRows: TelemetryRow[]) {
-  const turbidity = telemetryRows
-    .map((item) => item.turbidity)
-    .filter((value): value is number => typeof value === 'number' && !Number.isNaN(value));
-
-  if (turbidity.length < 2) {
-    return {
-      percent: 70,
-      description: 'Data belum cukup untuk menilai kesehatan filter.',
-    };
-  }
-
-  const average = turbidity.reduce((sum, value) => sum + value, 0) / turbidity.length;
-  const first = turbidity[0];
-  const last = turbidity[turbidity.length - 1];
-  const trend = last - first;
-  const span = Math.max(...turbidity) - Math.min(...turbidity);
-
-  let score = 100;
-  const avgPenalty = Math.min(60, (average / 25) * 60);
-  const trendPenalty = trend > 0 ? Math.min(25, trend * 2.5) : 0;
-  const spanPenalty = span > 10 ? 10 : span > 5 ? 5 : 0;
-
-  score = score - avgPenalty - trendPenalty - spanPenalty;
-  score = Math.round(clampNumber(score, 0, 100));
-
-  let description = `Rata-rata kekeruhan ${average.toFixed(1)} NTU, tren ${describeTrend(trend)}.`;
-  if (score < 50) {
-    description = `Filter bermasalah. Kekeruhan ${describeTrend(trend)}.`;
-  } else if (score < 70) {
-    description = `Filter mulai menurun. Kekeruhan ${describeTrend(trend)}.`;
-  }
-
-  return {
-    percent: score,
-    description,
-  };
-}
-
 export default function MonitorScreen() {
   const [ponds, setPonds] = useState<PondRow[]>([]);
   const [selectedKolamId, setSelectedKolamId] = useState<string | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryRow[]>([]);
+  const [filterHealth, setFilterHealth] = useState<FilterHealthState | null>(null);
   const [loadingTelemetry, setLoadingTelemetry] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -217,6 +227,7 @@ export default function MonitorScreen() {
   useEffect(() => {
     if (!selectedKolamId) {
       setTelemetry([]);
+      setFilterHealth(null);
       return;
     }
 
@@ -231,15 +242,34 @@ export default function MonitorScreen() {
       try {
         if (!selectedKolamId) {
           setTelemetry([]);
+          setFilterHealth(null);
           return;
         }
-        const data = await api.getTelemetryByPond(selectedKolamId);
+        const [telemetryResult, fhiResult] = await Promise.allSettled([
+          api.getTelemetryByPond(selectedKolamId),
+          api.getTelemetryFhi(selectedKolamId),
+        ]);
+
         if (!isMounted) return;
-        setTelemetry(sortTelemetry(data));
+
+        if (telemetryResult.status === 'fulfilled') {
+          setTelemetry(sortTelemetry(telemetryResult.value));
+        } else {
+          console.warn('Telemetry polling failed', telemetryResult.reason);
+          setTelemetry([]);
+        }
+
+        if (fhiResult.status === 'fulfilled') {
+          setFilterHealth(normalizeFhi(fhiResult.value));
+        } else {
+          console.warn('FHI polling failed', fhiResult.reason);
+          setFilterHealth(null);
+        }
       } catch (error) {
         if (isMounted) {
           console.warn('Telemetry polling failed', error);
           setTelemetry([]);
+          setFilterHealth(null);
         }
       } finally {
         if (isMounted) {
@@ -293,7 +323,10 @@ export default function MonitorScreen() {
   );
 
   const hasTelemetry = telemetry.length > 0;
-  const filterHealth = useMemo(() => computeFilterHealth(telemetry), [telemetry]);
+  const hasFhi = !!filterHealth;
+  const filterPercent = filterHealth?.percent ?? 0;
+  const filterDescription =
+    filterHealth?.description ?? 'Indeks kesehatan filter belum tersedia.';
   const metrics: Metric[] | undefined = useMemo(() => {
     if (!hasTelemetry) return undefined;
 
@@ -365,17 +398,34 @@ export default function MonitorScreen() {
         const data = await api.getPonds();
         setPonds(data);
         setTelemetry([]);
+        setFilterHealth(null);
         return;
       }
 
       setLoadingTelemetry(true);
-      const [pondsResult, telemetryResult] = await Promise.all([
+      const [pondsResult, telemetryResult, fhiResult] = await Promise.allSettled([
         api.getPonds(),
         api.getTelemetryByPond(selectedKolamId),
+        api.getTelemetryFhi(selectedKolamId),
       ]);
 
-      setPonds(pondsResult);
-      setTelemetry(sortTelemetry(telemetryResult));
+      if (pondsResult.status === 'fulfilled') {
+        setPonds(pondsResult.value);
+      } else {
+        console.warn('Failed to refresh ponds', pondsResult.reason);
+      }
+
+      if (telemetryResult.status === 'fulfilled') {
+        setTelemetry(sortTelemetry(telemetryResult.value));
+      } else {
+        console.warn('Failed to refresh telemetry', telemetryResult.reason);
+      }
+
+      if (fhiResult.status === 'fulfilled') {
+        setFilterHealth(normalizeFhi(fhiResult.value));
+      } else {
+        console.warn('Failed to refresh FHI', fhiResult.reason);
+      }
     } catch (error) {
       console.warn('Failed to refresh monitor data', error);
     } finally {
@@ -415,9 +465,9 @@ export default function MonitorScreen() {
         <MonitorMetricCards items={metrics} hasData={hasTelemetry} />
         <FilterStatusCard
           title="Indeks Kesehatan Filter"
-          percent={filterHealth.percent}
-          description={filterHealth.description}
-          hasData={hasTelemetry}
+          percent={filterPercent}
+          description={filterDescription}
+          hasData={hasFhi}
         />
       </ScrollView>
     </ThemedView>

@@ -18,6 +18,13 @@ type Telemetry = {
   timestamp: string | null;
 };
 
+type TelemetryFhi = {
+  percent?: number | null;
+  fhi?: number | null;
+  description?: string | null;
+  label?: string | null;
+};
+
 type FeederSchedule = {
   schedule_id: string;
   pond_id: string;
@@ -49,6 +56,7 @@ export const api = {
   // Telemetry
   postTelemetry: (data: any) => request('/api/telemetry', { method: 'POST', body: JSON.stringify(data) }),
   getTelemetryByPond: (pondId: string): Promise<Telemetry[]> => request(`/api/telemetry/${pondId}`),
+  getTelemetryFhi: (pondId: string): Promise<TelemetryFhi> => request(`/api/telemetry/fhi/${pondId}`),
 
   // Feeder
   getFeederSchedules: (pondId: string): Promise<FeederSchedule[]> => request(`/api/feeder/${pondId}/schedules`),
@@ -74,6 +82,6 @@ export const api = {
   verifyBlockchainTx: (txHash: string) => request(`/api/blockchain/verify/${txHash}`),
 };
 
-export type { FeederSchedule, Pond, Telemetry };
+export type { FeederSchedule, Pond, Telemetry, TelemetryFhi };
 
 export default api;
