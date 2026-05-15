@@ -7,21 +7,10 @@ import { ThemedView } from '@/components/themed-view';
 import { AddScheduleCard } from '@/components/ui/jadwal/add-schedule-card';
 import { ScheduleListCard, type ScheduleItem, type ScheduleSection } from '@/components/ui/jadwal/schedule-list-card';
 import { PageHeader } from '@/components/ui/page-header';
-import { supabase } from '@/src/supabase';
+import { api, type FeederSchedule, type Pond } from '@/src/api';
 
-type PondRow = {
-  pond_id: string;
-  name: string | null;
-  status: string | null;
-};
-
-type ScheduleRow = {
-  schedule_id: string;
-  pond_id: string;
-  time: string | null;
-  dosage: number | null;
-  is_active: boolean | null;
-};
+type PondRow = Pond;
+type ScheduleRow = FeederSchedule;
 
 type SectionId = 'morning' | 'noon' | 'evening' | 'night';
 
@@ -93,6 +82,14 @@ function createLocalId() {
   return `schedule-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function parseDosage(value: string) {
+  const normalized = value.replace(',', '.').trim();
+  if (!normalized) return null;
+  const parsed = Number.parseFloat(normalized);
+  if (Number.isNaN(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
 export default function JadwalScreen() {
   const [isFeederOn, setIsFeederOn] = useState(true);
   const [showAddCard, setShowAddCard] = useState(false);
@@ -100,6 +97,7 @@ export default function JadwalScreen() {
   const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
   const [selectedPondId, setSelectedPondId] = useState<string | null>(null);
   const [waktuValue, setWaktuValue] = useState('07:00');
+  const [dosageValue, setDosageValue] = useState('');
 
   const pondOptions = useMemo(
     () =>
@@ -120,31 +118,35 @@ export default function JadwalScreen() {
   );
 
   const loadPonds = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('ponds')
-      .select('pond_id, name, status')
-      .order('created_at', { ascending: true });
-
-    if (!error && data) {
+    try {
+      const data = await api.getPonds();
       setPonds(data);
+    } catch (error) {
+      console.warn('Failed to load ponds', error);
     }
   }, []);
 
   const loadSchedules = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('feeding_schedules')
-      .select('schedule_id, pond_id, time, dosage, is_active')
-      .order('time', { ascending: true });
-
-    if (!error && data) {
-      setSchedules(data);
+    if (!selectedPondId) {
+      setSchedules([]);
+      return;
     }
-  }, []);
+
+    try {
+      const data = await api.getFeederSchedules(selectedPondId);
+      setSchedules(data);
+    } catch (error) {
+      console.warn('Failed to load feeder schedules', error);
+    }
+  }, [selectedPondId]);
 
   useEffect(() => {
     loadPonds();
+  }, [loadPonds]);
+
+  useEffect(() => {
     loadSchedules();
-  }, [loadPonds, loadSchedules]);
+  }, [loadSchedules]);
 
   useEffect(() => {
     if (!selectedPondId && pondOptions.length > 0) {
@@ -188,59 +190,64 @@ export default function JadwalScreen() {
     }));
   }, [pondMap, schedules]);
 
+  const parsedDosage = useMemo(() => parseDosage(dosageValue), [dosageValue]);
+
   const handleSaveSchedule = useCallback(async () => {
     if (!selectedPondId) {
       return;
     }
 
-    const scheduleTime = buildScheduleTimestamp(waktuValue);
-    const { error } = await supabase.from('feeding_schedules').insert({
-      schedule_id: createLocalId(),
-      pond_id: selectedPondId,
-      time: scheduleTime.toISOString(),
-      dosage: null,
-      is_active: true,
-    });
+    if (parsedDosage === null) {
+      alert('Masukkan dosis pakan terlebih dahulu.');
+      return;
+    }
 
-    if (!error) {
+    const scheduleTime = buildScheduleTimestamp(waktuValue);
+    try {
+      await api.createFeederSchedule({
+        scheduleId: createLocalId(),
+        pondId: selectedPondId,
+        time: scheduleTime.toISOString(),
+        dosage: parsedDosage,
+      });
       await loadSchedules();
       setShowAddCard(false);
-    } else {
+      setDosageValue('');
+    } catch (error) {
+      console.warn('Failed to save schedule', error);
       alert('Gagal menyimpan jadwal.');
     }
-  }, [loadSchedules, selectedPondId, waktuValue]);
+  }, [loadSchedules, parsedDosage, selectedPondId, waktuValue]);
 
-  const handleToggleSchedule = useCallback(
-    async (item: ScheduleItem) => {
-      const nextActive = !item.isActive;
-      const { error } = await supabase
-        .from('feeding_schedules')
-        .update({ is_active: nextActive })
-        .eq('schedule_id', item.id);
-
-      if (!error) {
-        setSchedules((prev) =>
-          prev.map((schedule) =>
-            schedule.schedule_id === item.id
-              ? { ...schedule, is_active: nextActive }
-              : schedule,
-          ),
-        );
+  const handleToggleSchedule = useCallback(async (item: ScheduleItem) => {
+    try {
+      if (item.isActive) {
+        await api.deactivateFeederSchedule(item.id);
+      } else {
+        await api.activateFeederSchedule(item.id);
       }
-    },
-    [],
-  );
+      setSchedules((prev) =>
+        prev.map((schedule) =>
+          schedule.schedule_id === item.id
+            ? { ...schedule, is_active: !item.isActive }
+            : schedule,
+        ),
+      );
+    } catch (error) {
+      console.warn('Failed to toggle schedule', error);
+      alert('Gagal mengubah status jadwal.');
+    }
+  }, []);
 
   const deleteSchedule = useCallback(async (item: ScheduleItem) => {
-    const { error } = await supabase
-      .from('feeding_schedules')
-      .delete()
-      .eq('schedule_id', item.id);
-
-    if (!error) {
+    try {
+      await api.deleteFeederSchedule(item.id);
       setSchedules((prev) =>
         prev.filter((schedule) => schedule.schedule_id !== item.id),
       );
+    } catch (error) {
+      console.warn('Failed to delete schedule', error);
+      alert('Gagal menghapus jadwal.');
     }
   }, []);
 
@@ -326,9 +333,11 @@ export default function JadwalScreen() {
             ponds={pondOptions}
             selectedPondId={selectedPondId}
             waktuValue={waktuValue}
-            isSaveDisabled={!selectedPondId || pondOptions.length === 0}
+            dosageValue={dosageValue}
+            isSaveDisabled={!selectedPondId || pondOptions.length === 0 || parsedDosage === null}
             onSelectPond={setSelectedPondId}
             onChangeWaktu={setWaktuValue}
+            onChangeDosage={setDosageValue}
             onSave={handleSaveSchedule}
             onCancel={() => setShowAddCard(false)}
           />

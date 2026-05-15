@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 
@@ -9,9 +9,11 @@ type AddScheduleCardProps = {
   ponds: PondOption[];
   selectedPondId: string | null;
   waktuValue: string;
+  dosageValue: string;
   isSaveDisabled?: boolean;
   onSelectPond: (value: string) => void;
   onChangeWaktu: (value: string) => void;
+  onChangeDosage: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
 };
@@ -26,9 +28,11 @@ export function AddScheduleCard({
   ponds,
   selectedPondId,
   waktuValue,
+  dosageValue,
   isSaveDisabled = false,
   onSelectPond,
   onChangeWaktu,
+  onChangeDosage,
   onSave,
   onCancel,
 }: AddScheduleCardProps) {
@@ -137,6 +141,19 @@ export function AddScheduleCard({
             onChange={handleTimeChange}
           />
         )}
+      </View>
+      <View style={styles.fieldGroup}>
+        <ThemedText style={styles.fieldLabel}>Dosis Pakan (kg)</ThemedText>
+        <View style={styles.inputWrap}>
+          <TextInput
+            value={dosageValue}
+            onChangeText={onChangeDosage}
+            placeholder="Contoh: 2.5"
+            placeholderTextColor="#9AA3AF"
+            keyboardType="decimal-pad"
+            style={styles.inputText}
+          />
+        </View>
       </View>
       <View style={styles.actions}>
         <Pressable

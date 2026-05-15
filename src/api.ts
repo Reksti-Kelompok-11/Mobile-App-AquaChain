@@ -19,11 +19,11 @@ type Telemetry = {
 };
 
 type FeederSchedule = {
-  id: string;
-  pondId: string;
-  time: string; // HH:MM
-  amount?: number;
-  isActive?: boolean;
+  schedule_id: string;
+  pond_id: string;
+  time: string | null;
+  dosage: number | null;
+  is_active: boolean | null;
 };
 
 async function request(path: string, options: RequestInit = {}) {
@@ -52,8 +52,20 @@ export const api = {
 
   // Feeder
   getFeederSchedules: (pondId: string): Promise<FeederSchedule[]> => request(`/api/feeder/${pondId}/schedules`),
-  createFeederSchedule: (data: { pondId: string; time: string; amount?: number }) => request('/api/feeder/schedules', { method: 'POST', body: JSON.stringify(data) }),
+  createFeederSchedule: (data: { scheduleId?: string; pondId: string; time: string; dosage: number }) =>
+    request('/api/feeder/schedules', {
+      method: 'POST',
+      body: JSON.stringify({
+        schedule_id: data.scheduleId,
+        pond_id: data.pondId,
+        pondId: data.pondId,
+        time: data.time,
+        dosage: data.dosage,
+      }),
+    }),
+  activateFeederSchedule: (id: string) => request(`/api/feeder/schedules/${id}/activate`, { method: 'PATCH' }),
   deactivateFeederSchedule: (id: string) => request(`/api/feeder/schedules/${id}/deactivate`, { method: 'PATCH' }),
+  deleteFeederSchedule: (id: string) => request(`/api/feeder/schedules/${id}`, { method: 'DELETE' }),
   postFeederLog: (data: any) => request('/api/feeder/logs', { method: 'POST', body: JSON.stringify(data) }),
   getFeederLogs: (pondId: string) => request(`/api/feeder/${pondId}/logs`),
 
