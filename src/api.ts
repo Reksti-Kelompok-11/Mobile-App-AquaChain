@@ -1,9 +1,21 @@
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://backend-aqua-chain.vercel.app';
 
 type Pond = {
-  id: string;
-  label: string;
-  status?: string;
+  pond_id: string;
+  name: string | null;
+  fish_type: string | null;
+  capacity: number | null;
+  status: string | null;
+  created_at: string | null;
+};
+
+type Telemetry = {
+  telemetry_id: string;
+  pond_id: string;
+  ph: number | null;
+  temperature: number | null;
+  turbidity: number | null;
+  timestamp: string | null;
 };
 
 type FeederSchedule = {
@@ -36,7 +48,7 @@ export const api = {
 
   // Telemetry
   postTelemetry: (data: any) => request('/api/telemetry', { method: 'POST', body: JSON.stringify(data) }),
-  getTelemetryByPond: (pondId: string) => request(`/api/telemetry/${pondId}`),
+  getTelemetryByPond: (pondId: string): Promise<Telemetry[]> => request(`/api/telemetry/${pondId}`),
 
   // Feeder
   getFeederSchedules: (pondId: string): Promise<FeederSchedule[]> => request(`/api/feeder/${pondId}/schedules`),
@@ -50,6 +62,6 @@ export const api = {
   verifyBlockchainTx: (txHash: string) => request(`/api/blockchain/verify/${txHash}`),
 };
 
-export type { FeederSchedule, Pond };
+export type { FeederSchedule, Pond, Telemetry };
 
 export default api;

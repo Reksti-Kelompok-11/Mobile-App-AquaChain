@@ -1,9 +1,4 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import type {
-  RealtimePostgresDeletePayload,
-  RealtimePostgresInsertPayload,
-  RealtimePostgresUpdatePayload,
-} from '@supabase/supabase-js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -13,25 +8,10 @@ import { KolamSelector } from '@/components/ui/kolam-selector';
 import { FilterStatusCard } from '@/components/ui/monitor/filter-status-card';
 import { MonitorMetricCards, type Metric } from '@/components/ui/monitor/metric-cards';
 import { PageHeader } from '@/components/ui/page-header';
-import { supabase } from '@/src/supabase';
+import { api, type Pond, type Telemetry } from '@/src/api';
 
-type PondRow = {
-  pond_id: string;
-  name: string | null;
-  fish_type: string | null;
-  capacity: number | null;
-  status: string | null;
-  created_at: string | null;
-};
-
-type TelemetryRow = {
-  telemetry_id: string;
-  pond_id: string;
-  ph: number | null;
-  temperature: number | null;
-  turbidity: number | null;
-  timestamp: string | null;
-};
+type PondRow = Pond;
+type TelemetryRow = Telemetry;
 
 type StatusLevel = 'Baik' | 'Sedang' | 'Bahaya';
 
@@ -210,57 +190,21 @@ export default function MonitorScreen() {
     let isMounted = true;
 
     async function loadPonds() {
-      const { data, error } = await supabase
-        .from('ponds')
-        .select('pond_id, name, fish_type, capacity, status, created_at')
-        .order('created_at', { ascending: true });
-
-      if (!isMounted) return;
-      if (!error && data) {
+      try {
+        const data = await api.getPonds();
+        if (!isMounted) return;
         setPonds(data);
+      } catch (error) {
+        if (isMounted) {
+          console.warn('Failed to load ponds', error);
+        }
       }
     }
 
     loadPonds();
 
-    const channel = supabase
-      .channel('ponds-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'ponds' },
-        (payload: RealtimePostgresInsertPayload<PondRow>) => {
-          const next = payload.new as PondRow;
-          setPonds((current) => {
-            const exists = current.some((pond) => pond.pond_id === next.pond_id);
-            return exists ? current : [...current, next];
-          });
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'ponds' },
-        (payload: RealtimePostgresUpdatePayload<PondRow>) => {
-          const next = payload.new as PondRow;
-          setPonds((current) =>
-            current.map((pond) => (pond.pond_id === next.pond_id ? next : pond)),
-          );
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'ponds' },
-        (payload: RealtimePostgresDeletePayload<PondRow>) => {
-          const removed = payload.old as PondRow;
-          setPonds((current) =>
-            current.filter((pond) => pond.pond_id !== removed.pond_id),
-          );
-        },
-      )
-      .subscribe();
-
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -285,19 +229,13 @@ export default function MonitorScreen() {
       inFlight = true;
       setLoadingTelemetry(true);
       try {
-        const { data, error } = await supabase
-          .from('telemetry')
-          .select('telemetry_id, pond_id, ph, temperature, turbidity, timestamp')
-          .eq('pond_id', selectedKolamId)
-          .order('timestamp', { ascending: false })
-          .limit(TELEMETRY_LIMIT);
-
-        if (!isMounted) return;
-        if (!error && data) {
-          setTelemetry(sortTelemetry(data));
-        } else {
+        if (!selectedKolamId) {
           setTelemetry([]);
+          return;
         }
+        const data = await api.getTelemetryByPond(selectedKolamId);
+        if (!isMounted) return;
+        setTelemetry(sortTelemetry(data));
       } catch (error) {
         if (isMounted) {
           console.warn('Telemetry polling failed', error);
@@ -319,63 +257,11 @@ export default function MonitorScreen() {
 
     poll();
 
-    const channel = supabase
-      .channel(`telemetry:${selectedKolamId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'telemetry',
-          filter: `pond_id=eq.${selectedKolamId}`,
-        },
-        (payload: RealtimePostgresInsertPayload<TelemetryRow>) => {
-          const next = payload.new as TelemetryRow;
-          setTelemetry((current) => {
-            const filtered = current.filter((item) => item.telemetry_id !== next.telemetry_id);
-            return sortTelemetry([...filtered, next]);
-          });
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'telemetry',
-          filter: `pond_id=eq.${selectedKolamId}`,
-        },
-        (payload: RealtimePostgresUpdatePayload<TelemetryRow>) => {
-          const next = payload.new as TelemetryRow;
-          setTelemetry((current) => {
-            const filtered = current.filter((item) => item.telemetry_id !== next.telemetry_id);
-            return sortTelemetry([...filtered, next]);
-          });
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'telemetry',
-          filter: `pond_id=eq.${selectedKolamId}`,
-        },
-        (payload: RealtimePostgresDeletePayload<TelemetryRow>) => {
-          const removed = payload.old as TelemetryRow;
-          setTelemetry((current) =>
-            sortTelemetry(current.filter((item) => item.telemetry_id !== removed.telemetry_id)),
-          );
-        },
-      )
-      .subscribe();
-
     return () => {
       isMounted = false;
       if (pollTimeout) {
         clearTimeout(pollTimeout);
       }
-      supabase.removeChannel(channel);
     };
   }, [selectedKolamId]);
 
@@ -475,40 +361,23 @@ export default function MonitorScreen() {
     setIsRefreshing(true);
 
     try {
-      const pondsRequest = supabase
-        .from('ponds')
-        .select('pond_id, name, fish_type, capacity, status, created_at')
-        .order('created_at', { ascending: true });
-
       if (!selectedKolamId) {
-        const { data, error } = await pondsRequest;
-        if (!error && data) {
-          setPonds(data);
-        }
+        const data = await api.getPonds();
+        setPonds(data);
         setTelemetry([]);
         return;
       }
 
       setLoadingTelemetry(true);
       const [pondsResult, telemetryResult] = await Promise.all([
-        pondsRequest,
-        supabase
-          .from('telemetry')
-          .select('telemetry_id, pond_id, ph, temperature, turbidity, timestamp')
-          .eq('pond_id', selectedKolamId)
-          .order('timestamp', { ascending: false })
-          .limit(TELEMETRY_LIMIT),
+        api.getPonds(),
+        api.getTelemetryByPond(selectedKolamId),
       ]);
 
-      if (!pondsResult.error && pondsResult.data) {
-        setPonds(pondsResult.data);
-      }
-
-      if (!telemetryResult.error && telemetryResult.data) {
-        setTelemetry(sortTelemetry(telemetryResult.data));
-      } else {
-        setTelemetry([]);
-      }
+      setPonds(pondsResult);
+      setTelemetry(sortTelemetry(telemetryResult));
+    } catch (error) {
+      console.warn('Failed to refresh monitor data', error);
     } finally {
       setLoadingTelemetry(false);
       setIsRefreshing(false);
