@@ -1,5 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 
@@ -54,7 +54,11 @@ export function AutoFeederCard({
         </View>
       </View>
 
-      <View style={styles.timesRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.timesRow}
+      >
         {times.map((item) => (
           <View
             key={item.id}
@@ -75,7 +79,7 @@ export function AutoFeederCard({
             </ThemedText>
           </View>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -135,10 +139,11 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   timeCard: {
-    flex: 1,
+    minWidth: 120,
     backgroundColor: '#F3F6FF',
     borderRadius: 16,
     paddingVertical: 10,
+    paddingHorizontal: 14,
     alignItems: 'center',
   },
   timeCardActive: {
