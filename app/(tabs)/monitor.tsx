@@ -149,6 +149,56 @@ function metricStatus(value: number | null | undefined, min: number, max: number
   };
 }
 
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function describeTrend(value: number) {
+  const absValue = Math.abs(value);
+  if (absValue < 0.1) return 'stabil';
+  const direction = value > 0 ? 'naik' : 'turun';
+  return `${direction} ${absValue.toFixed(1)} NTU`;
+}
+
+function computeFilterHealth(telemetryRows: TelemetryRow[]) {
+  const turbidity = telemetryRows
+    .map((item) => item.turbidity)
+    .filter((value): value is number => typeof value === 'number' && !Number.isNaN(value));
+
+  if (turbidity.length < 2) {
+    return {
+      percent: 70,
+      description: 'Data belum cukup untuk menilai kesehatan filter.',
+    };
+  }
+
+  const average = turbidity.reduce((sum, value) => sum + value, 0) / turbidity.length;
+  const first = turbidity[0];
+  const last = turbidity[turbidity.length - 1];
+  const trend = last - first;
+  const span = Math.max(...turbidity) - Math.min(...turbidity);
+
+  let score = 100;
+  const avgPenalty = Math.min(60, (average / 25) * 60);
+  const trendPenalty = trend > 0 ? Math.min(25, trend * 2.5) : 0;
+  const spanPenalty = span > 10 ? 10 : span > 5 ? 5 : 0;
+
+  score = score - avgPenalty - trendPenalty - spanPenalty;
+  score = Math.round(clampNumber(score, 0, 100));
+
+  let description = `Rata-rata kekeruhan ${average.toFixed(1)} NTU, tren ${describeTrend(trend)}.`;
+  if (score < 50) {
+    description = `Filter bermasalah. Kekeruhan ${describeTrend(trend)}.`;
+  } else if (score < 70) {
+    description = `Filter mulai menurun. Kekeruhan ${describeTrend(trend)}.`;
+  }
+
+  return {
+    percent: score,
+    description,
+  };
+}
+
 export default function MonitorScreen() {
   const [ponds, setPonds] = useState<PondRow[]>([]);
   const [selectedKolamId, setSelectedKolamId] = useState<string | null>(null);
@@ -357,6 +407,7 @@ export default function MonitorScreen() {
   );
 
   const hasTelemetry = telemetry.length > 0;
+  const filterHealth = useMemo(() => computeFilterHealth(telemetry), [telemetry]);
   const metrics: Metric[] | undefined = useMemo(() => {
     if (!hasTelemetry) return undefined;
 
@@ -493,7 +544,12 @@ export default function MonitorScreen() {
           onSelect={setSelectedKolamId}
         />
         <MonitorMetricCards items={metrics} hasData={hasTelemetry} />
-        <FilterStatusCard hasData={hasTelemetry} />
+        <FilterStatusCard
+          title="Indeks Kesehatan Filter"
+          percent={filterHealth.percent}
+          description={filterHealth.description}
+          hasData={hasTelemetry}
+        />
       </ScrollView>
     </ThemedView>
   );
