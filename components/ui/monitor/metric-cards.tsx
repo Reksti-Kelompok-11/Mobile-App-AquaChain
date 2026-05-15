@@ -4,7 +4,7 @@ import { LineChart } from "react-native-chart-kit";
 
 import { ThemedText } from "@/components/themed-text";
 
-type Metric = {
+export type Metric = {
   id: string;
   title: string;
   subtitle: string;
@@ -143,14 +143,14 @@ function MetricCard({ metric }: { metric: Metric }) {
 
 export function MonitorMetricCards({
   items,
-  selectedKolamId,
+  hasData = true,
 }: {
   items?: Metric[];
-  selectedKolamId?: string;
+  hasData?: boolean;
 }) {
   const data = items ?? placeholderMetrics;
 
-  if (selectedKolamId && selectedKolamId !== "1") {
+  if (!hasData) {
     return (
       <View style={styles.metricsWrap}>
         <View style={styles.emptyCard}>

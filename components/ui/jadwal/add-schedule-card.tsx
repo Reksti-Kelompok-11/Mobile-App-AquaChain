@@ -6,24 +6,41 @@ import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 
 type AddScheduleCardProps = {
-  kolamValue: string;
+  ponds: PondOption[];
+  selectedPondId: string | null;
   waktuValue: string;
-  onChangeKolam: (value: string) => void;
+  dosageValue: string;
+  isSaveDisabled?: boolean;
+  onSelectPond: (value: string) => void;
   onChangeWaktu: (value: string) => void;
+  onChangeDosage: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
 };
 
+type PondOption = {
+  id: string;
+  label: string;
+  status?: string | null;
+};
+
 export function AddScheduleCard({
-  kolamValue,
+  ponds,
+  selectedPondId,
   waktuValue,
-  onChangeKolam,
+  dosageValue,
+  isSaveDisabled = false,
+  onSelectPond,
   onChangeWaktu,
+  onChangeDosage,
   onSave,
   onCancel,
 }: AddScheduleCardProps) {
   const [showPicker, setShowPicker] = useState(false);
   const [timeValue, setTimeValue] = useState(() => parseTime(waktuValue));
+  const [showPondOptions, setShowPondOptions] = useState(false);
+  const selectedPondLabel =
+    ponds.find((pond) => pond.id === selectedPondId)?.label ?? 'Pilih Kolam';
 
   const handleOpenPicker = () => {
     setShowPicker(true);
@@ -50,16 +67,56 @@ export function AddScheduleCard({
       </View>
       <View style={styles.fieldGroup}>
         <ThemedText style={styles.fieldLabel}>Pilih Kolam</ThemedText>
-        <View style={styles.inputWrap}>
-          <TextInput
-            value={kolamValue}
-            onChangeText={onChangeKolam}
-            placeholder="Pilih Kolam"
-            placeholderTextColor="#9AA3AF"
-            style={styles.inputText}
-          />
+        <Pressable
+          onPress={() => setShowPondOptions((prev) => !prev)}
+          style={({ pressed }) => [
+            styles.inputWrap,
+            pressed && styles.inputPressed,
+          ]}
+        >
+          <ThemedText
+            style={[
+              styles.inputText,
+              !selectedPondId && styles.placeholderText,
+            ]}
+          >
+            {selectedPondLabel}
+          </ThemedText>
           <MaterialIcons name="expand-more" size={22} color="#11181C" />
-        </View>
+        </Pressable>
+        {showPondOptions && (
+          <View style={styles.optionList}>
+            {ponds.length === 0 ? (
+              <ThemedText style={styles.emptyText}>
+                Belum ada kolam tersedia.
+              </ThemedText>
+            ) : (
+              ponds.map((pond) => (
+                <Pressable
+                  key={pond.id}
+                  onPress={() => {
+                    onSelectPond(pond.id);
+                    setShowPondOptions(false);
+                  }}
+                  style={({ pressed }) => [
+                    styles.optionRow,
+                    pond.id === selectedPondId && styles.optionRowActive,
+                    pressed && styles.optionRowPressed,
+                  ]}
+                >
+                  <ThemedText
+                    style={[
+                      styles.optionText,
+                      pond.id === selectedPondId && styles.optionTextActive,
+                    ]}
+                  >
+                    {pond.label}
+                  </ThemedText>
+                </Pressable>
+              ))
+            )}
+          </View>
+        )}
       </View>
       <View style={styles.fieldGroup}>
         <ThemedText style={styles.fieldLabel}>Waktu Pemberian</ThemedText>
@@ -85,12 +142,27 @@ export function AddScheduleCard({
           />
         )}
       </View>
+      <View style={styles.fieldGroup}>
+        <ThemedText style={styles.fieldLabel}>Dosis Pakan (kg)</ThemedText>
+        <View style={styles.inputWrap}>
+          <TextInput
+            value={dosageValue}
+            onChangeText={onChangeDosage}
+            placeholder="Contoh: 2.5"
+            placeholderTextColor="#9AA3AF"
+            keyboardType="decimal-pad"
+            style={styles.inputText}
+          />
+        </View>
+      </View>
       <View style={styles.actions}>
         <Pressable
           onPress={onSave}
+          disabled={isSaveDisabled}
           style={({ pressed }) => [
             styles.primaryButton,
-            pressed && styles.buttonPressed,
+            isSaveDisabled && styles.primaryButtonDisabled,
+            pressed && !isSaveDisabled && styles.buttonPressed,
           ]}
         >
           <ThemedText style={styles.primaryButtonText}>Simpan</ThemedText>
@@ -157,8 +229,43 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingRight: 8,
   },
+  placeholderText: {
+    color: '#9AA3AF',
+  },
   inputPressed: {
     opacity: 0.9,
+  },
+  optionList: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  optionRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  optionRowActive: {
+    backgroundColor: '#EEF4FF',
+  },
+  optionRowPressed: {
+    backgroundColor: '#F5F7FA',
+  },
+  optionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#11181C',
+  },
+  optionTextActive: {
+    color: '#2F7BFF',
+  },
+  emptyText: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 12,
+    color: '#6B7280',
   },
   actions: {
     flexDirection: 'row',
@@ -177,6 +284,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  primaryButtonDisabled: {
+    backgroundColor: '#A9C6FF',
   },
   outlineButton: {
     flex: 1,

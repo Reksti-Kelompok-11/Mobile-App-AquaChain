@@ -1,13 +1,12 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 type Kolam = {
   id: string;
   name: string;
-  status: "Baik" | "Sedang" | "Bahaya";
+  status?: string | null;
 };
 
 const kolamData: Kolam[] = [
@@ -20,7 +19,20 @@ const statusColors = {
   Baik: "#28a745",
   Sedang: "#ffc107",
   Bahaya: "#dc3545",
-};
+} as const;
+
+type StatusKey = keyof typeof statusColors;
+
+function normalizeStatus(status?: string | null): StatusKey {
+  if (!status) return "Sedang";
+  const value = status.trim().toLowerCase();
+
+  if (["baik", "aman", "normal", "ok"].includes(value)) return "Baik";
+  if (["bahaya", "buruk", "danger", "critical"].includes(value)) return "Bahaya";
+  if (["sedang", "waspada", "warning"].includes(value)) return "Sedang";
+
+  return "Sedang";
+}
 
 export function KolamCard({
   kolam,
@@ -31,7 +43,8 @@ export function KolamCard({
   isSelected: boolean;
   onPress: () => void;
 }) {
-  const colorScheme = useColorScheme() ?? "light";
+  const statusKey = normalizeStatus(kolam.status);
+  const statusColor = statusColors[statusKey];
   const cardStyle = {
     ...styles.card,
     backgroundColor: "rgba(0, 0, 0, 0.06)",
@@ -56,11 +69,11 @@ export function KolamCard({
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: statusColors[kolam.status] },
+              { backgroundColor: statusColor },
             ]}
           />
-          <ThemedText style={{ color: statusColors[kolam.status] }}>
-            {kolam.status}
+          <ThemedText style={{ color: statusColor }}>
+            {statusKey}
           </ThemedText>
         </View>
       </ThemedView>
