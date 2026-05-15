@@ -1,10 +1,9 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 
-type ScheduleItem = {
+export type ScheduleItem = {
   id: string;
   time: string;
   pondLabel: string;
@@ -14,7 +13,7 @@ type ScheduleItem = {
   isInactive?: boolean;
 };
 
-type ScheduleSection = {
+export type ScheduleSection = {
   id: string;
   title: string;
   iconName: keyof typeof MaterialIcons.glyphMap;
@@ -92,37 +91,31 @@ const defaultSections: ScheduleSection[] = [
 
 export function ScheduleListCard({
   sections = defaultSections,
+  onToggleItem,
+  onDeleteItem,
 }: {
   sections?: ScheduleSection[];
+  onToggleItem?: (item: ScheduleItem) => void;
+  onDeleteItem?: (item: ScheduleItem) => void;
 }) {
-  const [data, setData] = useState(sections);
+  const totalItems = sections.reduce(
+    (count, section) => count + section.items.length,
+    0,
+  );
 
-  const toggleItem = (sectionId: string, itemId: string) => {
-    setData((prev) =>
-      prev.map((section) => {
-        if (section.id !== sectionId) {
-          return section;
-        }
-
-        return {
-          ...section,
-          items: section.items.map((item) =>
-            item.id === itemId
-              ? {
-                  ...item,
-                  isActive: !item.isActive,
-                  isInactive: item.isActive,
-                }
-              : item
-          ),
-        };
-      })
+  if (totalItems === 0) {
+    return (
+      <View style={styles.emptyCard}>
+        <ThemedText style={styles.emptyText}>
+          Belum ada jadwal pakan.
+        </ThemedText>
+      </View>
     );
-  };
+  }
 
   return (
     <View style={styles.container}>
-      {data.map((section) => (
+      {sections.map((section) => (
         <View key={section.id} style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <View style={[styles.sectionIcon, { backgroundColor: section.iconBg }]}>
@@ -175,7 +168,8 @@ export function ScheduleListCard({
                 <View style={styles.itemActions}>
                   <Switch
                     value={!!item.isActive}
-                    onValueChange={() => toggleItem(section.id, item.id)}
+                    onValueChange={() => onToggleItem?.(item)}
+                    disabled={!onToggleItem}
                     trackColor={{
                       false: '#E1E4EA',
                       true: '#2F7BFF',
@@ -183,7 +177,8 @@ export function ScheduleListCard({
                     thumbColor={item.isActive ? '#FFFFFF' : '#F2F2F2'}
                   />
                   <Pressable
-                    onPress={() => alert('Hapus jadwal.')}
+                    onPress={() => onDeleteItem?.(item)}
+                    disabled={!onDeleteItem}
                     style={({ pressed }) => [
                       styles.deleteButton,
                       pressed && styles.deletePressed,
@@ -207,6 +202,17 @@ export function ScheduleListCard({
 const styles = StyleSheet.create({
   container: {
     gap: 14,
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 18,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8A8F98',
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',
