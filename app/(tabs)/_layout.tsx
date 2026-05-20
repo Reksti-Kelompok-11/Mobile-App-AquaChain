@@ -1,14 +1,24 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
+import { useAuth } from '@/src/auth-context';
 
 export default function TabLayout() {
+  const { isAuthenticated, isAuthReady } = useAuth();
   const tabActive = '#0B5A75';
   const tabInactive = '#8B8B8B';
   const tabBackground = '#FFFFFF';
+
+  if (!isAuthReady) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/register" />;
+  }
 
   function TabBarIcon({
     focused,
@@ -39,6 +49,18 @@ export default function TabLayout() {
         tabBarLabelStyle: styles.label,
         tabBarStyle: [styles.tabBar, { backgroundColor: tabBackground }],
       }}>
+      <Tabs.Screen
+        name="register"
+        options={{
+          tabBarButton: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="login"
+        options={{
+          tabBarButton: () => null,
+        }}
+      />
       <Tabs.Screen
         name="index"
         options={{

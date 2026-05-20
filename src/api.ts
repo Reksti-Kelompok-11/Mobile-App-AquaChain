@@ -47,6 +47,26 @@ async function request(path: string, options: RequestInit = {}) {
 }
 
 export const api = {
+  // Auth
+  register: (data: { name: string; email: string; password: string }) =>
+    request('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      credentials: 'include',
+    }),
+  login: (data: { email: string; password: string }) =>
+    request('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      credentials: 'include',
+    }),
+  logout: () =>
+    request('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    }),
+  me: () => request('/api/auth/me', { credentials: 'include' }),
+
   // Ponds
   getPonds: (): Promise<Pond[]> => request('/api/ponds'),
   getPond: (pondId: string): Promise<Pond> => request(`/api/ponds/${pondId}`),

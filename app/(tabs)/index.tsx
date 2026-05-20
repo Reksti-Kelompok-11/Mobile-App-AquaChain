@@ -8,7 +8,8 @@ import { AutoFeederCard } from '@/components/ui/home/auto-feeder-card';
 import { KolamOverviewCard } from '@/components/ui/home/kolam-overview-card';
 import { KolamSelector } from '@/components/ui/kolam-selector';
 import { PageHeader } from '@/components/ui/page-header';
-import { api, type FeederSchedule, type Pond, type Telemetry } from '@/src/api';
+import { api, type FeederSchedule, type Pond, type Telemetry, } from '@/src/api';
+import { useAuth } from '@/src/auth-context';
 
 type PondRow = Pond;
 type TelemetryRow = Telemetry;
@@ -161,6 +162,7 @@ function filterStatusLabel(percent: number) {
 }
 
 export default function HomeScreen() {
+  const { user } = useAuth();
   const [now, setNow] = useState(new Date());
   const [ponds, setPonds] = useState<PondRow[]>([]);
   const [selectedPondId, setSelectedPondId] = useState<string | null>(null);
@@ -380,6 +382,9 @@ export default function HomeScreen() {
     ? `Pakan terakhir: ${formatTimeValue(latestLogTime.toISOString())}`
     : 'Pakan terakhir: -';
 
+  const namaUser =
+    user?.name?.trim() || (user?.email ? user.email.split('@')[0] : 'Pengguna');
+
   const handleRefresh = useCallback(async () => {
     await Promise.all([loadPonds(), loadSchedules(), loadLogs()]);
 
@@ -399,7 +404,7 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.screen}>
       <PageHeader 
-        title="Selamat Pagi, Wijak" 
+        title={`Selamat Pagi, ${namaUser}`} 
         subtitle={`Waktu Real Time : ${timeLabel} WIB`}
         onPressRightIcon={handleRefresh}
       >
