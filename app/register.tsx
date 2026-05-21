@@ -136,10 +136,6 @@ export default function RegisterScreen() {
 					<View style={styles.formCard}>
 						<View style={styles.formHeader}>
 							<ThemedText style={styles.formTitle}>Informasi Akun</ThemedText>
-							<View style={styles.formBadge}>
-								<MaterialIcons name="verified-user" size={14} color="#0C6F98" />
-								<ThemedText style={styles.formBadgeText}>Versi Beta</ThemedText>
-							</View>
 						</View>
 
 						<View style={styles.fieldGroup}>

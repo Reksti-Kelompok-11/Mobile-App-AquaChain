@@ -94,10 +94,6 @@ export default function LoginScreen() {
 					<View style={styles.formCard}>
 						<View style={styles.formHeader}>
 							<ThemedText style={styles.formTitle}>Masuk ke Akun</ThemedText>
-							<View style={styles.formBadge}>
-								<MaterialIcons name="shield" size={14} color="#0C6F98" />
-								<ThemedText style={styles.formBadgeText}>Aman</ThemedText>
-							</View>
 						</View>
 
 						<View style={styles.fieldGroup}>
@@ -157,9 +153,6 @@ export default function LoginScreen() {
 									) : null}
 								</View>
 								<ThemedText style={styles.rememberText}>Ingat saya</ThemedText>
-							</Pressable>
-							<Pressable accessibilityRole="button" onPress={handleForgot}>
-								<ThemedText style={styles.forgotText}>Lupa kata sandi?</ThemedText>
 							</Pressable>
 						</View>
 

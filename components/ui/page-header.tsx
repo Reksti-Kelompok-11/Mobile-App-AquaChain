@@ -1,9 +1,12 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import React from 'react';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { api } from '@/src/api';
+import { useAuth } from '@/src/auth-context';
 
 type PageHeaderProps = {
   title: string;
@@ -26,6 +29,24 @@ export function PageHeader({
   onPressRightIcon,
   children,
 }: PageHeaderProps) {
+  const router = useRouter();
+  const { clearAuth } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = useCallback(async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await api.logout();
+    } catch (error) {
+      console.warn('Logout failed', error);
+    } finally {
+      clearAuth();
+      setIsLoggingOut(false);
+      router.replace('/login');
+    }
+  }, [clearAuth, isLoggingOut, router]);
+
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
       <View style={styles.header}>
@@ -49,6 +70,18 @@ export function PageHeader({
                   <ThemedText style={styles.actionPillText}>{rightActionLabel}</ThemedText>
                 </Pressable>
               ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Logout"
+                onPress={handleLogout}
+                disabled={isLoggingOut}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  styles.logoutButton,
+                  pressed && !isLoggingOut ? styles.actionPressed : null,
+                ]}>
+                <MaterialIcons name="logout" size={22} color="#FFFFFF" />
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 onPress={onPressRightIcon}
@@ -135,6 +168,9 @@ const styles = StyleSheet.create({
     elevation: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logoutButton: {
+    borderColor: 'rgba(255, 205, 205, 0.9)',
   },
   actionPill: {
     height: 34,
