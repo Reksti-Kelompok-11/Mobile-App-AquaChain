@@ -1,74 +1,66 @@
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { NotificationCard } from '@/components/ui/notifikasi/notification-card';
 import { PageHeader } from '@/components/ui/page-header';
+import { clearNotifications, loadNotifications, type NotificationItem } from '@/src/notifications';
+
+function formatRelativeTime(timestamp?: string | null): string | undefined {
+  if (!timestamp) return undefined;
+  const time = new Date(timestamp).getTime();
+  if (Number.isNaN(time)) return undefined;
+  const diffMs = Date.now() - time;
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+
+  if (diffMinutes === 0) return 'baru saja';
+  if (diffMinutes < 60) return `${diffMinutes} menit lalu`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} jam lalu`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} hari lalu`;
+}
 
 export default function NotifikasiScreen() {
-  const notifications: Array<{
-    title: string;
-    description: string;
-    status: 'bahaya' | 'waspada' | 'info' | 'selesai';
-    sourceLabel?: string;
-    timeLabel?: string;
-    actionLabel?: string;
-    iconName?: 'device-thermostat' | 'restaurant' | 'warning' | 'info' | 'check-circle';
-    onPressAction?: () => void;
-  }> = [
-    {
-      title: 'Suhu Air Tinggi',
-      description:
-        'Suhu Kolam A2 mencapai 30.2C. Pertimbangkan untuk menambah aerasi.',
-      status: 'waspada',
-      sourceLabel: 'Kolam A2',
-      timeLabel: '12 menit lalu',
-      actionLabel: 'Tindakan',
-      iconName: 'device-thermostat',
-      onPressAction: () => alert('Tindakan: suhu air'),
-    },
-    {
-      title: 'Pakan Otomatis Diberikan',
-      description:
-        'Sesi pakan pagi (06:00) selesai. Total 8.5 kg untuk 3 kolam.',
-      status: 'info',
-      sourceLabel: 'Semua Kolam',
-      timeLabel: '2 jam lalu',
-      iconName: 'restaurant',
-    },
-    {
-      title: 'Amonia Tinggi — Terdeteksi',
-      description:
-        'Kadar amonia Kolam A2 mencapai 1.2 mg/L. Sistem menghentikan pakan otomatis!',
-      status: 'bahaya',
-      sourceLabel: 'Kolam A2',
-      timeLabel: 'Kemarin 18:30',
-      actionLabel: 'Tindakan',
-      iconName: 'warning',
-      onPressAction: () => alert('Tindakan: amonia'),
-    },
-    {
-      title: 'Data Tersinkron ke Blockchain',
-      description:
-        'Log operasional harian berhasil di-anchor ke blockchain. Data tidak dapat diubah.',
-      status: 'info',
-      sourceLabel: 'Sistem',
-      timeLabel: 'Kemarin 00:00',
-      iconName: 'info',
-    },
-    {
-      title: 'Filter Kolam Diganti',
-      description: 'Penggantian filter Kolam B1 selesai. Sistem kembali normal.',
-      status: 'selesai',
-      sourceLabel: 'Kolam B1',
-      timeLabel: '2 hari lalu',
-      iconName: 'check-circle',
-    },
-  ];
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const bahayaCount = notifications.filter(
-    (item) => item.status === 'bahaya'
-  ).length;
+  const refreshNotifications = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await loadNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.warn('Gagal memuat notifikasi lokal', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshNotifications();
+    }, [refreshNotifications]),
+  );
+
+  const handleMarkAllRead = useCallback(async () => {
+    await clearNotifications();
+    setNotifications([]);
+    alert('Semua notifikasi ditandai sudah dibaca.');
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    void refreshNotifications();
+  }, [refreshNotifications]);
+
+  const bahayaCount = useMemo(
+    () => notifications.filter((item) => item.status === 'bahaya').length,
+    [notifications],
+  );
   const hasBahaya = bahayaCount > 0;
 
   return (
@@ -77,8 +69,8 @@ export default function NotifikasiScreen() {
         title="Notifikasi"
         subtitle="Peringatan dan Info Sistem"
         rightActionLabel="Baca Semua"
-        onPressRightAction={() => alert('Semua notifikasi ditandai sudah dibaca.')}
-        onPressRightIcon={() => alert('Menyegarkan notifikasi...')}
+        onPressRightAction={handleMarkAllRead}
+        onPressRightIcon={handleRefresh}
       >
         <View style={[styles.warningPill, !hasBahaya && styles.safePill]}>
           <View style={[styles.warningDot, !hasBahaya && styles.safeDot]} />
@@ -93,22 +85,30 @@ export default function NotifikasiScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {notifications.map((notification, index) => (
+        {notifications.map((notification) => (
           <NotificationCard
-            key={`${notification.title}-${index}`}
+            key={notification.id}
             title={notification.title}
             description={notification.description}
             status={notification.status}
             sourceLabel={notification.sourceLabel}
-            timeLabel={notification.timeLabel}
+            timeLabel={formatRelativeTime(notification.createdAt)}
             actionLabel={notification.actionLabel}
             iconName={notification.iconName}
-            onPressAction={notification.onPressAction}
           />
         ))}
+        {isLoading ? (
+          <View style={styles.helperTextWrap}>
+            <ThemedText style={styles.helperText}>Memuat notifikasi...</ThemedText>
+          </View>
+        ) : notifications.length === 0 ? (
+          <View style={styles.helperTextWrap}>
+            <ThemedText style={styles.helperText}>Belum ada notifikasi bahaya.</ThemedText>
+          </View>
+        ) : null}
         <View style={styles.helperTextWrap}>
           <ThemedText style={styles.helperText}>
-            Notifikasi baru akan muncul otomatis dari sistem monitoring.
+            Notifikasi bahaya tersimpan di perangkat dan muncul otomatis saat kondisi berbahaya terdeteksi.
           </ThemedText>
         </View>
       </ScrollView>
@@ -165,6 +165,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2BBE5D',
   },
   safeText: {
-    color: '#1D7A3B',
+    color: '#ffffff',
   },
 });

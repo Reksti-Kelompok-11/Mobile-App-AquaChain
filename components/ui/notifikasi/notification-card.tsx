@@ -2,8 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-
-type NotificationStatus = "bahaya" | "waspada" | "info" | "selesai";
+import type { NotificationStatus } from "@/src/notifications";
 
 type NotificationCardProps = {
   title: string;
@@ -12,7 +11,7 @@ type NotificationCardProps = {
   sourceLabel?: string;
   timeLabel?: string;
   actionLabel?: string;
-  iconName?: keyof typeof MaterialIcons.glyphMap;
+  iconName?: keyof typeof MaterialIcons.glyphMap | string;
   onPressAction?: () => void;
 };
 
@@ -41,6 +40,7 @@ export function NotificationCard({
   onPressAction,
 }: NotificationCardProps) {
   const colors = statusStyles[status];
+  const resolvedIcon = iconName as keyof typeof MaterialIcons.glyphMap;
 
   return (
     <View style={[styles.card, { borderColor: colors.accent }]}
@@ -48,7 +48,7 @@ export function NotificationCard({
       <View style={styles.headerRow}>
         <View style={[styles.iconWrap, { backgroundColor: colors.soft }]}
         >
-          <MaterialIcons name={iconName} size={18} color={colors.accent} />
+          <MaterialIcons name={resolvedIcon} size={18} color={colors.accent} />
         </View>
         <View style={styles.titleWrap}>
           <ThemedText style={styles.title}>{title}</ThemedText>

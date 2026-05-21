@@ -9,6 +9,7 @@ import { FilterStatusCard } from '@/components/ui/monitor/filter-status-card';
 import { MonitorMetricCards, type Metric } from '@/components/ui/monitor/metric-cards';
 import { PageHeader } from '@/components/ui/page-header';
 import { api, type Pond, type Telemetry, type TelemetryFhi } from '@/src/api';
+import { addNotification, type NotificationItem } from '@/src/notifications';
 
 type PondRow = Pond;
 type TelemetryRow = Telemetry;
@@ -24,6 +25,9 @@ type StatusLevel = 'Baik' | 'Sedang' | 'Bahaya';
 
 const TELEMETRY_LIMIT = 5;
 const TELEMETRY_POLL_MS = 3000;
+const PH_RANGE = { min: 6.5, max: 9.0 };
+const TEMP_RANGE = { min: 24, max: 30 };
+const TURB_RANGE = { min: 0, max: 25 };
 
 const STATUS_UI: Record<StatusLevel, { label: string; text: string; bg: string; iconBg: string }> = {
   Baik: {
@@ -60,10 +64,16 @@ function normalizeStatus(status?: string | null): StatusLevel {
 function statusFromTelemetry(telemetry: TelemetryRow | null): StatusLevel {
   if (!telemetry) return 'Sedang';
 
-  const phOk = telemetry.ph !== null && telemetry.ph >= 6.5 && telemetry.ph <= 9.0;
+  const phOk =
+    telemetry.ph !== null && telemetry.ph >= PH_RANGE.min && telemetry.ph <= PH_RANGE.max;
   const tempOk =
-    telemetry.temperature !== null && telemetry.temperature >= 24 && telemetry.temperature <= 30;
-  const turbOk = telemetry.turbidity !== null && telemetry.turbidity >= 0 && telemetry.turbidity <= 25;
+    telemetry.temperature !== null &&
+    telemetry.temperature >= TEMP_RANGE.min &&
+    telemetry.temperature <= TEMP_RANGE.max;
+  const turbOk =
+    telemetry.turbidity !== null &&
+    telemetry.turbidity >= TURB_RANGE.min &&
+    telemetry.turbidity <= TURB_RANGE.max;
 
   const outOfRange = [phOk, tempOk, turbOk].filter((ok) => !ok).length;
 
@@ -92,6 +102,54 @@ function formatRelativeTime(timestamp?: string | null): string | null {
 function formatNumber(value: number | null | undefined, decimals: number): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '--';
   return value.toFixed(decimals);
+}
+
+function buildDangerSummary(telemetry: TelemetryRow): string {
+  const issues: string[] = [];
+
+  if (telemetry.ph !== null && (telemetry.ph < PH_RANGE.min || telemetry.ph > PH_RANGE.max)) {
+    issues.push(`pH ${formatNumber(telemetry.ph, 1)} (normal ${PH_RANGE.min}-${PH_RANGE.max})`);
+  }
+
+  if (
+    telemetry.temperature !== null &&
+    (telemetry.temperature < TEMP_RANGE.min || telemetry.temperature > TEMP_RANGE.max)
+  ) {
+    issues.push(
+      `Suhu ${formatNumber(telemetry.temperature, 1)} C (normal ${TEMP_RANGE.min}-${TEMP_RANGE.max} C)`
+    );
+  }
+
+  if (
+    telemetry.turbidity !== null &&
+    (telemetry.turbidity < TURB_RANGE.min || telemetry.turbidity > TURB_RANGE.max)
+  ) {
+    issues.push(
+      `Kekeruhan ${formatNumber(telemetry.turbidity, 0)} NTU (normal ${TURB_RANGE.min}-${TURB_RANGE.max} NTU)`
+    );
+  }
+
+  if (issues.length === 0) return 'Parameter berada di luar batas normal.';
+  return `Parameter di luar batas: ${issues.join(', ')}.`;
+}
+
+function buildDangerNotification(
+  telemetry: TelemetryRow,
+  pondName: string | null,
+  pondId: string,
+): NotificationItem {
+  const sourceLabel = pondName ?? `Kolam ${pondId}`;
+  return {
+    id: `telemetry-${telemetry.telemetry_id}`,
+    title: 'Kondisi Bahaya Terdeteksi',
+    description: `${sourceLabel}: ${buildDangerSummary(telemetry)}`,
+    status: 'bahaya',
+    sourceLabel,
+    createdAt: telemetry.timestamp ?? new Date().toISOString(),
+    iconName: 'warning',
+    telemetryId: telemetry.telemetry_id,
+    pondId,
+  };
 }
 
 function clampPercent(value: number) {
@@ -300,6 +358,20 @@ export default function MonitorScreen() {
     [ponds, selectedKolamId],
   );
 
+  useEffect(() => {
+    if (!selectedKolamId || telemetry.length === 0) return;
+    const latest = telemetry[telemetry.length - 1];
+    if (!latest) return;
+    if (statusFromTelemetry(latest) !== 'Bahaya') return;
+
+    const notification = buildDangerNotification(
+      latest,
+      selectedPond?.name ?? null,
+      selectedKolamId,
+    );
+    void addNotification(notification);
+  }, [telemetry, selectedKolamId, selectedPond?.name]);
+
   const latestTelemetry = telemetry.length > 0 ? telemetry[telemetry.length - 1] : null;
   const telemetryStatus = statusFromTelemetry(latestTelemetry);
   const pondStatus = selectedPond?.status ? normalizeStatus(selectedPond.status) : telemetryStatus;
@@ -330,9 +402,9 @@ export default function MonitorScreen() {
   const metrics: Metric[] | undefined = useMemo(() => {
     if (!hasTelemetry) return undefined;
 
-    const phStatus = metricStatus(latestTelemetry?.ph, 6.5, 9.0);
-    const tempStatus = metricStatus(latestTelemetry?.temperature, 24, 30);
-    const turbStatus = metricStatus(latestTelemetry?.turbidity, 0, 25);
+    const phStatus = metricStatus(latestTelemetry?.ph, PH_RANGE.min, PH_RANGE.max);
+    const tempStatus = metricStatus(latestTelemetry?.temperature, TEMP_RANGE.min, TEMP_RANGE.max);
+    const turbStatus = metricStatus(latestTelemetry?.turbidity, TURB_RANGE.min, TURB_RANGE.max);
 
     return [
       {
